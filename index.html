@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jardín de Lilis</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #07080f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Georgia', serif;
+            overflow: hidden;
+        }
+        #wrap {
+            position: relative;
+            display: inline-block;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0; left: 0;
+        }
+        #base { position: relative; }
+    </style>
+</head>
+<body>
+    <div id="wrap">
+        <canvas id="base"></canvas>
+        <canvas id="overlay"></canvas>
+    </div>
+    <script>
+        const MENSAJE = "TE AMO MUCHO ITZURY ❤️";
+        
+        const base = document.getElementById('base');
+        const overlay = document.getElementById('overlay');
+        const ctx = base.getContext('2d');
+        const octx = overlay.getContext('2d');
+
+        const SIZE = Math.min(window.innerWidth, window.innerHeight, 820);
+        [base, overlay].forEach(c => { c.width = SIZE; c.height = SIZE; });
+        document.getElementById('wrap').style.width = SIZE + 'px';
+        document.getElementById('wrap').style.height = SIZE + 'px';
+
+        const W = SIZE, H = SIZE;
+        const U = SIZE / 820;
+
+        function rand(a, b) {return Math.random() * (b - a) + a; }
+        function lerp(a, b, t) { return a + (b - a) * t;}
+        function deg(d) { return d * Math.PI / 180; }
+
+        function drawBackground() {
+            const bg = ctx.createRadialGradient(W*0.45,H*0.4,0,W*0.5,H*0.5,W*0.8);
+            bg.addColorStop(0,'#0e0f1a'); bg.addColorStop(0.5,'#080a12'); bg.addColorStop(1,'#030407');
+            ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+            ctx.globalAlpha = 0.025;
+            for(let i = 0; i<7000; i++){
+                const v=rand(30,80); ctx.fillStyle= `rgb(${v},${v},${v+10})`;
+                ctx.fillRect(rand(0,W),rand(0,H),1,1);
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function drawStem(x,baseY,topY,curve){
+            const cp1x=x+curve*30*U, cp1y=lerp(baseY,topY,0.35);
+            const cp2x=x+curve*15*U,cp2y=lerp(baseY,topY,0.65);
+            const g=ctx.createLinearGradient(x-8*U,0,x+8*U,0);
+            g.addColorStop(0,'#1b3d18'); g.addColorStop(0.4,'#2e6628');
+            g.addColorStop(0.7,'#3a7e32'); g.addColorStop(1,'#1e3e1a');
+            ctx.shadowColor='rgba(0,0,0,0.55)'; ctx.shadowBlur=10;
+            ctx.beginPath(); ctx.moveTo(x,baseY);
+            ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,x+curve*8*U,topY);
+            ctx.lineWidth=SIZE*0.011; ctx.strokeStyle=g; ctx.lineCap='round'; ctx.stroke();
+            ctx.shadowBlur=0;
+        }
+
+        function drawLilyLeaf(cx,cy,angle,scale,flip){
+            ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle);
+            if(flip) ctx.scale(-1,1);
+            const s=scale*SIZE*0.085;
+            const g=ctx.createLinearGradient(0,-s,s*0.3,0);
+            g.addColorStop(0,'#1a4a16'); g.addColorStop(0.45,'#2e7a28');
+            g.addColorStop(0.75,'#3a8e32'); g.addColorStop(1,'#183e14');
+            ctx.shadowColor='rgba(0,0,0,0.45)'; ctx.shadowBlur=8;
+            ctx.beginPath(); ctx.moveTo(0,0);
+            ctx.bezierCurveTo(-s*0.08,-s*0.5,s*0.85,-s*0.9,s*0.95,-s);
+            ctx.bezierCurveTo(s*1.0,-s*0.9,s*0.3,-s*0.3,0,0);
+            ctx.fillStyle=g; ctx.fill();
+            ctx.beginPath(); ctx.moveTo(0,0);
+            ctx.bezierCurveTo(s*0.2,-s*0.3,s*0.6,-s*0.7,s*0.95,-s);
+            ctx.lineWidth=1; ctx.strokeStyle='rgba(15,50,12,0.65)'; ctx.stroke();
+            ctx.shadowBlur=0; ctx.restore();
+        }
+
+        function drawStamens(cx,cy,count,length,color){
+            for(let i=0;i<count;i++){
+                const angle=deg(i*(360/count)+rand(-15,15));
+                const curve=rand(-0.28,0.28);
+                const ex=cx+Math.sin(angle)*length, ey=cy-Math.cos(angle)*length;
+                const cpx=cx+Math.sin(angle+curve)*length*0.6, cpy=cy-Math.cos(angle+curve)*length*0.6;
+                ctx.beginPath(); ctx.moveTo(cx,cy); ctx.quadraticCurveTo(cpx,cpy,ex,ey);
+                ctx.lineWidth=1.2; ctx.strokeStyle=color; ctx.stroke();
+                ctx.beginPath(); ctx.ellipse(ex,ey,3.5*U,2*U,angle,0,Math.PI*2);
+                ctx.fillStyle='#7a5000'; ctx.fill();
+                ctx.beginPath(); ctx.ellipse(ex-1*U,ey-1*U,1.5*U,1*U,angle,0,Math.PI*2);
+                ctx.fillStyle='rgba(255,200,50,0.4)'; ctx.fill();
+            }
+        }
+
+        function drawPistil(cx,cy,length,color){
+            ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+rand(-4,4)*U,cy-length);
+            ctx.lineWidth=1.8; ctx.strokeStyle=color; ctx.stroke();
+            ctx.beginPath(); ctx.arc(cx+rand(-3,3)*U,cy-length,4*U,0,Math.PI*2);
+            ctx.fillStyle='#4a3000'; ctx.fill();
+        }
+
+        function drawLily(cx,cy,size,scheme,rotOffset){
+            let petalBase,petalMid,petalTip,spotColor,stamenColor,pistilColor,veins;
+            if(scheme==='yellow'){
+                petalBase='#d4a000';petalMid='#f0cc00';petalTip='#fff5b0';
+                spotColor='rgba(110,55,0,0.5)';stamenColor='#5a3a00';pistilColor='#402800';veins='rgba(160,90,0,0.3)';
+            }else if(scheme==='purple'){
+                petalBase='#4a1278';petalMid='#7e28b8';petalTip='#cca0ee';
+                spotColor='rgba(35,0,70,0.5)';stamenColor='#300055';pistilColor='#200040';veins='rgba(90,30,150,0.35)';
+            }else{
+                petalBase='#a8a8c0';petalMid='#e4e4f4';petalTip='#ffffff';
+                spotColor='rgba(170,130,195,0.4)';stamenColor='#706060';pistilColor='#504040';veins='rgba(150,130,175,0.32)';
+            }
+            const S=size;
+            ctx.save(); ctx.translate(cx,cy);
+            for(let layer=0;layer<2;layer++){
+                for(let i=0;i<3;i++){
+                    const baseAngle=deg(i*120+layer*60+(rotOffset||0));
+                    ctx.save(); ctx.rotate(baseAngle);
+                    const pw=S*(layer===0?0.34:0.38), ph=S*(layer===0?1.05:0.98);
+                    const tipX=S*rand(-0.06,0.06), tipY=-ph;
+                    const pg=ctx.createLinearGradient(-pw*0.4,0,pw*0.4,-ph*0.65);
+                    pg.addColorStop(0,petalBase); pg.addColorStop(0.35,petalMid);
+                    pg.addColorStop(0.7,petalMid); pg.addColorStop(1,petalTip);
+                    ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=S*0.18;
+                    ctx.beginPath(); ctx.moveTo(0,S*0.05);
+                    ctx.bezierCurveTo(-pw*0.7,-ph*0.15,-pw*0.85,-ph*0.8,tipX-pw*0.12,tipY+ph*0.1);
+                    ctx.bezierCurveTo(tipX-pw*0.04,tipY,tipX,tipY,tipX,tipY);
+                    ctx.bezierCurveTo(tipX+pw*0.04,tipY,tipX+pw*0.12,tipY+ph*0.1,pw*0.85,-ph*0.8);
+                    ctx.bezierCurveTo(pw*0.7,-ph*0.15,0,S*0.05,0,S*0.05);
+                    ctx.fillStyle=pg; ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(0,S*0.02);
+                    ctx.bezierCurveTo(tipX*0.3,-ph*0.4,tipX*0.6,-ph*0.75,tipX,tipY);
+                    ctx.lineWidth=1.5; ctx.strokeStyle=veins; ctx.stroke();
+                for(let v=1;v<=3;v++){
+                    const t=v/4,vx=lerp(0,tipX,t),vy=lerp(0,tipY,t);
+                    ctx.beginPath(); ctx.moveTo(vx,vy);
+                    ctx.quadraticCurveTo(vx-pw*0.3*t,vy-ph*0.08*t,vx-pw*0.5*t,vy+ph*0.04);
+                    ctx.lineWidth=0.7; ctx.strokeStyle=veins; ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(vx,vy);
+                    ctx.quadraticCurveTo(vx+pw*0.3*t,vy-ph*0.08*t,vx+pw*0.5*t,vy+ph*0.04); ctx.stroke();
+                }
+                ctx.shadowBlur=0;
+                const ns=Math.floor(rand(5,12));
+                for(let sp=0;sp<ns;sp++){
+                    const st=rand(0.08,0.62);
+                    const sx=lerp(0,tipX,st)+rand(-pw*0.38,pw*0.38)*(1-st*0.3), sy=lerp(0,tipY*0.82,st);
+                    ctx.beginPath(); ctx.ellipse(sx,sy,rand(1.8,5)*U,rand(1.2,3.5)*U,rand(0,Math.PI),0,Math.PI*2);
+                    ctx.fillStyle=spotColor; ctx.fill();
+                }
+                const hl=ctx.createRadialGradient(-pw*0.15,-ph*0.28,0,-pw*0.15,-ph*0.28,pw*0.5);
+                hl.addColorStop(0,'rgba(255,255,255,0.22)'); hl.addColorStop(1,'rgba(255,255,255,0)');
+                ctx.beginPath(); ctx.ellipse(-pw*0.15,-ph*0.28,pw*0.4,ph*0.22,deg(-15),0,Math.PI*2);
+                ctx.fillStyle=hl; ctx.fill();
+                ctx.restore();
+                }
+            }
+            ctx.shadowBlur=0;
+            drawStamens(0,0,6,S*0.64,stamenColor);
+            drawPistil(0,0,S*0.70,pistilColor);
+            ctx.restore();
+        }
+
+        function drawLilyBud(cx,cy,size,scheme){
+            let col1,col2;
+            if(scheme==='yellow'){col1='#a07800';col2='#d8b800';}
+            else if(scheme==='purple'){col1='#3a1060';col2='#7028a0';}
+            else{col1='#9090a8';col2='#d8d8f0';}
+            ctx.save(); ctx.translate(cx,cy);
+            const bg=ctx.createLinearGradient(-size*0.25,-size,size*0.25,0);
+            bg.addColorStop(0,col1); bg.addColorStop(0.5,col2); bg.addColorStop(1,col1);
+            ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=10;
+            ctx.beginPath(); ctx.moveTo(0,0);
+            ctx.bezierCurveTo(-size*0.28,-size*0.35,-size*0.3,-size*0.8,0,-size);
+            ctx.bezierCurveTo(size*0.3,-size*0.8,size*0.28,-size*0.35,0,0);
+            ctx.fillStyle=bg; ctx.fill();
+            ctx.beginPath(); ctx.moveTo(0,-size*0.05);
+            ctx.bezierCurveTo(size*0.05,-size*0.4,size*0.08,-size*0.75,0,-size*0.98);
+            ctx.lineWidth=1; ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.stroke();
+            for(let i=-1;i<=1;i++){
+                ctx.beginPath(); ctx.moveTo(0,0);
+                ctx.bezierCurveTo(i*size*0.22,-size*0.22,i*size*0.26,-size*0.46,i*size*0.06,-size*0.56);
+                ctx.lineWidth=4*U; ctx.strokeStyle='#286020'; ctx.stroke();
+            }
+            ctx.shadowBlur=0; ctx.restore();
+        }
+
+        function drawDaisy(cx,cy,size){
+            ctx.save(); ctx.translate(cx,cy);
+            const count=14,ph=size*0.7,pw=size*0.2;
+            ctx.shadowColor='rgba(0,0,0,0.45)'; ctx.shadowBlur=size*0.25;
+            for(let i=0;i<count;i++){
+                ctx.save(); ctx.rotate(deg(i*360/count));
+                const pg=ctx.createLinearGradient(0,0,0,-ph);
+                pg.addColorStop(0,'#cccce0'); pg.addColorStop(0.5,'#f0f0ff'); pg.addColorStop(1,'#e4e4f8');
+                ctx.beginPath(); ctx.moveTo(-pw*0.12,-size*0.1);
+                ctx.bezierCurveTo(-pw*0.85,-ph*0.3,-pw*0.85,-ph*0.7,0,-ph);
+                ctx.bezierCurveTo(pw*0.85,-ph*0.7,pw*0.85,-ph*0.3,pw*0.12,-size*0.1);
+                ctx.fillStyle=pg; ctx.fill(); ctx.restore();
+            }
+            const cr=size*0.26;
+            ctx.shadowBlur=size*0.12;
+            ctx.beginPath(); ctx.arc(0,0,cr,0,Math.PI*2); ctx.fillStyle='#1a0e00'; ctx.fill();
+            ctx.shadowBlur=0;
+            for(let i=0;i<150;i++){
+                const t=Math.sqrt(Math.random()),a=Math.random()*Math.PI*2;
+                const px=Math.cos(a)*t*cr*0.88,py=Math.sin(a)*t*cr*0.88;
+                const d=Math.sqrt(px*px+py*py)/cr;
+                ctx.beginPath(); ctx.arc(px,py,rand(1,2.5)*U,0,Math.PI*2);
+                ctx.fillStyle=`hsl(${rand(35,50)},70%,${lerp(60,22,d)}%)`; ctx.fill();
+            }
+            const cg=ctx.createRadialGradient(-cr*0.2,-cr*0.2,0,0,0,cr);
+            cg.addColorStop(0,'rgba(255,200,80,0.2)'); cg.addColorStop(1,'rgba(0,0,0,0)');
+            ctx.beginPath(); ctx.arc(0,0,cr,0,Math.PI*2); ctx.fillStyle=cg; ctx.fill();
+            ctx.restore();
+        }
+
+        function drawScene(){
+            ctx.clearRect(0,0,W,H);
+            drawBackground();
+            drawLilyLeaf(W*0.12,H*0.86,deg(-52),1.45,false);
+            drawLilyLeaf(W*0.84,H*0.83,deg(50),1.35,true);
+            drawLilyLeaf(W*0.50,H*0.90,deg(8),1.15,false);
+            drawLilyLeaf(W*0.34,H*0.79,deg(-28),0.98,true);
+            drawLilyLeaf(W*0.66,H*0.81,deg(36),0.92,false);
+            drawLilyLeaf(W*0.21,H*0.73,deg(-44),0.86,false);
+            drawLilyLeaf(W*0.79,H*0.75,deg(57),0.82,true);
+            drawStem(W*0.50,H*0.97,H*0.28,-0.18);
+            drawLilyLeaf(W*0.50-24*U,H*0.67,deg(-40),1.0,false);
+            drawLilyLeaf(W*0.50+12*U,H*0.54,deg(33),0.9,true);
+            drawLily(W*0.50,H*0.28,95*U,'yellow',12);
+            drawStem(W*0.30,H*0.95,H*0.33,0.55);
+            drawLilyLeaf(W*0.30+18*U,H*0.64,deg(28),0.88,true);
+            drawLilyLeaf(W*0.30-8*U,H*0.51,deg(-32),0.82,false);
+            drawLily(W*0.30,H*0.33,82*U,'purple',-8);
+            drawStem(W*0.69,H*0.94,H*0.31,-0.52);
+            drawLilyLeaf(W*0.69-20*U,H*0.61,deg(-37),0.88,false);
+            drawLilyLeaf(W*0.69+7*U,H*0.49,deg(36),0.8,true);
+            drawLily(W*0.69,H*0.31,80*U,'white',6);
+            drawStem(W*0.81,H*0.91,H*0.21,-0.72);
+            drawLilyLeaf(W*0.81-16*U,H*0.57,deg(-43),0.8,false);
+            drawLily(W*0.81,H*0.21,68*U,'yellow',28);
+            drawStem(W*0.17,H*0.92,H*0.23,0.82);
+            drawLilyLeaf(W*0.17+13*U,H*0.54,deg(31),0.78,true);
+            drawLily(W*0.17,H*0.23,65*U,'purple',-18);
+            drawStem(W*0.09,H*0.90,H*0.37,1.05);
+            drawLily(W*0.09,H*0.37,52*U,'white',10);
+            drawStem(W*0.89,H*0.89,H*0.39,-0.92);
+            drawLily(W*0.89,H*0.39,50*U,'yellow',-14);
+            drawStem(W*0.43,H*0.93,H*0.17,0.18);
+            drawLily(W*0.43,H*0.17,58*U,'purple',22);
+            drawStem(W*0.61,H*0.91,H*0.15,-0.32);
+            drawLily(W*0.61,H*0.15,54*U,'white',-22);
+            drawStem(W*0.36,H*0.90,H*0.13,0.45);
+            drawLily(W*0.36,H*0.13,50*U,'yellow',35);
+            drawStem(W*0.75,H*0.88,H*0.45,-0.6);
+            drawLilyLeaf(W*0.75-10*U,H*0.65,deg(-38),0.7,false);
+            drawLily(W*0.75,H*0.45,44*U,'purple',-5);
+            drawStem(W*0.23,H*0.88,H*0.44,0.65);
+            drawLily(W*0.23,H*0.44,42*U,'white',18);
+            drawStem(W*0.55,H*0.92,H*0.24,0.38);
+            drawLilyBud(W*0.55,H*0.24,40*U,'yellow');
+            drawStem(W*0.25,H*0.90,H*0.29,0.62);
+            drawLilyBud(W*0.25,H*0.29,34*U,'purple');
+            drawStem(W*0.74,H*0.90,H*0.27,-0.58);
+            drawLilyBud(W*0.74,H*0.27,32*U,'white');
+            drawStem(W*0.14,H*0.86,H*0.42,0.72);
+            drawLilyBud(W*0.14,H*0.42,24*U,'yellow');
+            drawStem(W*0.84,H*0.87,H*0.48,-0.65);
+            drawLilyBud(W*0.84,H*0.48,22*U,'purple');
+            drawStem(W*0.39,H*0.93,H*0.51,0.28);
+            drawLilyLeaf(W*0.39-10*U,H*0.71,deg(-22),0.65,false);
+            drawDaisy(W*0.39,H*0.51,34*U);
+            drawStem(W*0.62,H*0.92,H*0.49,-0.32);
+            drawDaisy(W*0.62,H*0.49,30*U);
+            const vg=ctx.createRadialGradient(W/2,H/2,W*0.25,W/2,H/2,W*0.76);
+            vg.addColorStop(0,'rgba(0,0,0,0)');
+            vg.addColorStop(0.62,'rgba(0,0,0,0)');
+            vg.addColorStop(1,'rgba(0,0,0,0.82)');
+            ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+        }
+
+        const letters = MENSAJE.split('').map((ch, i) => ({
+            ch,
+            phase: rand(0, Math.PI * 2),
+            speed: rand(0.6, 1.2),
+            offsetY: rand(-1.2, 1.2) * U,
+        }));
+ 
+        const FONT_SIZE    = Math.round(SIZE * 0.058);
+        const TEXT_Y       = Math.round(SIZE * 0.075);
+        const TEXT_COLORS  = [
+            { h: 52,  s: 90, l: 75 },
+            { h: 270, s: 80, l: 78 },
+            { h: 0,   s: 0,  l: 96 },
+        ];
+ 
+        function drawGlowText(t) {
+            octx.save();
+            octx.font = `italic ${FONT_SIZE}px Georgia, serif`;
+            octx.textAlign = 'center';
+            octx.textBaseline = 'middle';
+            
+            const totalWidth = octx.measureText(MENSAJE).width;
+            let startX = W/2 - totalWidth/2;
+            
+            letters.forEach((l, i) => {
+                if(l.ch === ' ') { startX += FONT_SIZE * 0.32; return; }
+            
+                const pulse  = (Math.sin(t * l.speed + l.phase) + 1) / 2; // 0..1
+                const floatY = Math.sin(t * l.speed * 0.7 + l.phase) * 2.5 * U;
+            
+                const colorT   = (Math.sin(t * 0.4 + l.phase) + 1) / 2;  // 0..1
+                const ci1 = i % TEXT_COLORS.length;
+                const ci2 = (i + 1) % TEXT_COLORS.length;
+                const c1 = TEXT_COLORS[ci1], c2 = TEXT_COLORS[ci2];
+                const hh  = lerp(c1.h, c2.h, colorT);
+                const ss  = lerp(c1.s, c2.s, colorT);
+                const ll  = lerp(c1.l, c2.l, colorT);
+            
+                const charW = octx.measureText(l.ch).width;
+                const cx    = startX + charW / 2;
+                const cy    = TEXT_Y + l.offsetY + floatY;
+            
+                octx.shadowColor  = `hsla(${hh},${ss}%,${ll}%,${0.35 + pulse*0.25})`;
+                octx.shadowBlur   = 28 + pulse * 18;
+                octx.fillStyle    = `hsla(${hh},${ss}%,${ll}%,${0.15 + pulse*0.12})`;
+                octx.fillText(l.ch, cx, cy);
+            
+                octx.shadowBlur   = 10 + pulse * 8;
+                octx.shadowColor  = `hsla(${hh},${ss}%,95%,${0.5 + pulse*0.3})`;
+                octx.fillStyle    = `hsla(${hh},${ss}%,${ll}%,${0.55 + pulse*0.2})`;
+                octx.fillText(l.ch, cx, cy);
+            
+                octx.shadowBlur   = 4;
+                octx.shadowColor  = `hsla(${hh},${ss}%,98%,${0.7 + pulse*0.3})`;
+                octx.fillStyle    = `hsla(${hh},10%,98%,${0.82 + pulse*0.18})`;
+                octx.fillText(l.ch, cx, cy);
+            
+                startX += charW;
+            });
+    
+            octx.restore();
+        }
+
+        const hues = [52, 270, 0];
+        let particles = Array.from({length:24}, () => ({
+        x: rand(W*0.1,W*0.9), y: rand(H*0.3,H*0.95),
+        vy: rand(-0.32,-0.1), vx: rand(-0.1,0.1),
+        r: rand(1.5,3.5), alpha: rand(0.18,0.45),
+        hue: hues[Math.floor(Math.random()*3)]
+        }));
+ 
+        function animate() {
+            octx.clearRect(0,0,W,H);
+            const t = Date.now() * 0.001;
+
+            particles.forEach(p => {
+                p.x += p.vx + Math.sin(t*0.4 + p.y*0.01) * 0.15;
+                p.y += p.vy;
+                p.alpha -= 0.0005;
+                if(p.y < H*0.04 || p.alpha <= 0){
+                p.x=rand(W*0.1,W*0.9); p.y=H*rand(0.72,0.97);
+                p.vy=rand(-0.32,-0.1); p.vx=rand(-0.12,0.12);
+                p.alpha=rand(0.2,0.45); p.r=rand(1.5,3.2);
+                }
+                const pg=octx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*5);
+                pg.addColorStop(0,`hsla(${p.hue},78%,82%,${p.alpha})`);
+                pg.addColorStop(0.5,`hsla(${p.hue},70%,70%,${p.alpha*0.3})`);
+                pg.addColorStop(1,'rgba(0,0,0,0)');
+                octx.beginPath(); octx.arc(p.x,p.y,p.r*5,0,Math.PI*2);
+                octx.fillStyle=pg; octx.fill();
+            });
+
+            drawGlowText(t);
+ 
+            requestAnimationFrame(animate);
+        }
+
+        drawScene();
+        animate();
+ 
+        window.addEventListener('resize', () => {
+        const ns = Math.min(window.innerWidth, window.innerHeight, 820);
+        [base, overlay].forEach(c => { c.width = ns; c.height = ns; });
+        document.getElementById('wrap').style.width  = ns + 'px';
+        document.getElementById('wrap').style.height = ns + 'px';
+        drawScene();
+        });
+    </script>
+</body>
+</html>
